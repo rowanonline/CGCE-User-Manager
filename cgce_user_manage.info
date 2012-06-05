@@ -1,0 +1,8 @@
+name = User Management 
+description = CGCE user management features and system integrations
+package = CGCE 
+core = 7.x
+version = 7.x-1.2.2
+configure = admin/config/cgce/user_manage
+dependencies[] = cgce_admin
+dependencies[] = cas

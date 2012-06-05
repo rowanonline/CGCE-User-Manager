@@ -1,0 +1,486 @@
+<?php
+/**
+* @file
+* A Module that provides user management controls and systems integrations
+*/
+
+/**
+* Implements hook_help.
+*/
+function cgce_user_manage_help($path, $arg) {
+  switch ($path) {
+    case "admin/help#cgce_user_manage":
+      return '<p>'.  t("CGCE Custom Module for user management & systems integrations") .'</p>';
+      break;
+  }
+} 
+
+/**
+* Implements hook_menu().
+*/
+function cgce_user_manage_menu() {
+
+  $items = array(); 
+
+  $items['admin/config/cgce/user_manage'] = array(
+    'title' => 'CGCE User Management',
+    'description' => 'Settings User Management module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cgce_user_manage_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['portal/new-student'] = array (
+    'title' => 'New CGCE Student Account Check',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('portal_new_student_form'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+ 
+  return $items;
+}  
+
+
+/**
+* Form function, called by drupal_get_form()
+* in cgce_user_manage_menu().
+*/
+function cgce_user_manage_form($form, &$form_state) {
+  $form['cgce_um_cas'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('CAS User Account Settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['cgce_um_cas']['cgce_um_casuser'] = array(
+    '#type' => 'radios',
+    '#title' => t('Enable insert CAS User Accounts'),
+    '#default_value' => variable_get('cgce_um_casuser',0),
+    '#description' => t('Selecting YES will mirror the Drupal Username in the CAS Username field on new user creation'),
+    '#options' => array('1'=>'Yes','0'=>'No'),
+    '#required' => TRUE,
+  );
+  $form['cgce_um_accnt_chk'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('New Student Account Check Settings'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_accntchk_enable'] = array(
+    '#type' => 'radios',
+    '#title' => t('Enable New Student Account Check Page'),
+    '#default_value' => variable_get('cgce_um_accntchk_enable',0),
+    '#options' => array('1'=>'Yes','0'=>'No'),
+    '#required' => TRUE,
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_markup1'] = array(
+    '#markup' => '</br><hr width="500px"><em>Drupal Instance Information</em></br><p><strong>IMPORTANT!</strong> The system will check fields in this drupal instance first.</br>For the following Drupal fields, do not include the <strong>"field_"</strong> variable prefix.</p>',
+  );    
+  $form['cgce_um_accnt_chk']['cgce_um_drupal_bannerid_field'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Drupal Banner ID Field'),
+    '#default_value' => variable_get('cgce_um_drupal_bannerid_field'),
+    '#description' => t('ex. If field_usr_banner_id, enter "usr_banner_id"'),
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_drupal_lname_field'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Drupal Last Name Field'),
+    '#default_value' => variable_get('cgce_um_drupal_lname_field'),
+    '#description' => t('ex. If field_usr_lname, enter "usr_lname"'),
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_markup2'] = array(
+    '#markup' => '</br><hr  width="500px"><em>Banner SIS Oracle Information</em>',
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_bannerdb'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Banner Oracle Database HOST URI'),
+    '#default_value' => variable_get('cgce_um_bannerdb'),
+    '#description' => t('ex. admindb3.rowan.edu'),
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_bannerinst'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Banner Oracle SID (Instance)'),
+    '#default_value' => variable_get('cgce_um_bannerinst'),
+    '#description' => t('ex. FORTNGHT, PPRD, or PROD'),
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_bannerusr'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Banner Oracle DB User'),
+    '#default_value' => variable_get('cgce_um_bannerusr'),
+    '#description' => t('User that has SELECT access to DB Tables & Views'),
+  );
+  $form['cgce_um_accnt_chk']['cgce_um_bannerpass'] = array(
+    '#type' => 'password',
+    '#title' => t('Banner Oracle DB User Password'),
+  );
+  return system_settings_form($form);
+}
+
+
+/**
+ * Form function, called by drupal_get_form()
+ * for URL portal/new-student
+ */
+function portal_new_student_form($form, &$form_state) {
+  if(variable_get('cgce_um_accntchk_enable') == 1) {
+   //FORM ENABLED
+   $form['accountck'] = array(
+    '#markup' => t('<p>Are you a new CGCE student?  Just regsitered for a CGCE course?  The next step is to find out the status of your Rowan Network Account in CGCE\'s Technology Systems.  Run the Account Check below and follow the steps provides in the results.</p><p><strong>IMPORTANT! </strong> Your account will not be setup to work with CGCE technology systems sooner than 30 days prior to the start date of your first class.  Before running this check, verify your course schedule and the start date of your first CGCE course.  If your first class does not start in 30 days or less, you will not be able to access CGCE systems today and should revisit this Account Check page at the appropriate time in the future.'),
+   );
+   $form['fbox'] = array(
+     '#type' => 'fieldset',
+    // '#title' => t('<strong>Check Account Status</strong>'),
+   );
+   $form['fbox']['lastname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last Name'),
+    '#size' => 25,
+   );
+   $form['fbox']['bannerid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Banner ID'),
+    '#size' => 25,
+   );
+   $form['fbox']['sub'] = array( 
+    '#type' => 'submit',
+    '#value' => t('Run Check'),
+    '#ajax' => array(
+	    'callback' => 'portal_new_student_form_callback',
+	    'wrapper' => 'results-area',
+    ), 
+   );
+
+  $form['box'] = array(
+    '#markup'=> '<br>',
+    '#prefix' => '<div id="results-area">',
+    '#suffix' => '</div>',
+    );
+  } else {
+   //FORM DISABLED
+   $form['accountck'] = array(
+    '#markup' => t('The Student Account Check Feature has been disabled.'),
+   );	  
+  }	  
+   return $form;
+}
+
+
+function custom_account_check_form_validate($form, &$form_state) {
+   $err = array();    
+   if(empty($form_state['values']['lastname'])) {
+	   $err[] = '<div class="new-student-check-lastname-required">The Last Name field is required.</div>';
+   }
+   if(empty($form_state['values']['bannerid'])) {
+	   $err[] = '<div class="new-student-check-bannerid-required">The Banner ID field is required.</div>';
+   }
+   if(!empty($form_state['values']['bannerid']) && (strlen($form_state['values']['bannerid']) != 9 || !is_numeric($form_state['values']['bannerid']))) {
+	$err[] = '<div class="new-student-check-bannerid-required">The Banner ID is not valid.</div>';
+   } 
+   if(count($err) > 0 ) {
+	   $errHTML = join('<br>', $err);
+   } else {
+	   $errHTML = NULL;
+   }
+   return $errHTML;
+}
+
+function portal_new_student_form_callback($form, &$form_state) {
+  $errCheck = custom_account_check_form_validate($form, $form_state);
+  if(!is_null($errCheck)) {
+	return array("#markup" => "<div id='results-area'><br>".$errCheck."</div>");	   
+  } else { 
+	   $mesg = '<h2>Account Check Results</h2>';
+	   switch(portal_new_student_form_process($form, $form_state)) {
+ 	        case 100:
+		  //Account verfied in Drupal
+		  $mesg .= '<div class="new-student-check-success"><strong>SUCCESS!</strong> Your Account is available in the CGCE Portal. So what\'s next?<br><ul><li>If you have not activated your Rowan Network Account for the first time, do so now: <a href="account-manager">Vist the Account Manager page.</a></li><li>If your account is already activated, return to the <a href="/portal">Portal Home</a> and log in with your username & password.</li</ul></div>';
+		  break;
+		case 200:
+		  //Last Name not matching that stored in Drupal Acccount
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> It appears that information you have entered does not exactly match our records.  Please check that you have entered your last name and Banner ID correctly and try again.  If this error persists, please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request. One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 250:
+		  //Last Name field missing in Drupal Acccount
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> The system has found this account in the CGCE Portal, but there is an error that is preventing further processing.   Please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request. One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 350:
+		  //Banner Check STATUS 350 - User Not Found for CURRENT or NEXT term
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> The system cannot find a record matching the information you have provided for the current or next Academic Term.  This means that there is no course registration record on file. Please double check that the Last Name and Banner ID have been correctly entered.  If there was a mistake, please fix it and run the check again.</p><p>If you are newly accpeted or matriculated into a CGCE program, or have registered for a course in less than 24 hours, it is possible that your information has not fully processed and propagated to the system.  It is recommended that you check your account status again in 24 hrs.  Otherwise, if you have been successfully regsitered for an up-coming course for more than 24 hrs, please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request. One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 375:
+		  //Banner Check STATUS 375 - Last Name does NOT Match
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> The system cannot find a record matching the information you have provided.  Please double check that the Last Name and Banner ID have been correctly entered.  If you are certain this information is correct, please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request.  One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 380:
+		  //Banner Check STATUS 380 - No CGCE Enrollment Record for Current or Next Term
+		  $mesg .= '<div class="new-student-check-notice"><strong>NOTICE!</strong> We have located your records in the system, but there is currently no enrollment records for your account in any CGCE courses for the current or next term.</p><p>Please take this opportunity to ensure that you are student enrolled in courses managed by the College of Graduate and Continuing Education (CGCE).  Traditional students not enrolled in CGCE courses are advised to visit the Rowan University Information Resources web site at <a href="www.rowan.edu/ir">www.rowan.edu/ir</a>. If you beleive thatyou are enrolled in CGCE courses for the current term and this message was received in error, please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request. One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 385:
+		  //Banner Check STATUS 385 - CGCE Enrollment Record for Next Term ONLY
+		  $mesg .= '<div class="new-student-check-notice"><strong>NOTICE!</strong> We have located your records in the system, but there is currently enrollment records for the next term. </p><p>CGCE prepares student accounts in our portal and related technology systems 30 days prior to the official start date of your first CGCE course.  You are recieving this message because it is too far in advance of your first course start date for your account to be prepared.  It is recommended that you return to this Account Status Check approximately 30 days prior to your first CGCE course to activate your account. If you beleive that you are enrolled in CGCE courses for the current term and this message was received in error, please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request. One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 400:
+		  //Banner Check STATUS 400 - Unknown error in Banner Check (all systems appear to check out, but no account in Drupal)
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> The system has found your account information, but the account is not prepared in the CGCE Portal or there is an error that is preventing further processing. </p><p><strong>IMPORTANT: </strong>From the point of registration, it can take up to 24 hours for this information to properly propagate to all systems and for your account to be established in the CGCE Portal.  We ask that you wait approximately 24 hours or more, and then attempt to run this account check again.</p><p>If you have received this message multiple times after waiting the requested 24 hour period, it is likely than an internal issues is preventing proper preparation of your account.  We appologize for the inconveneince.  Please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request.  One of our technicians will follow up with you shortly.</div>';
+		  break;
+		case 500:
+		  //No Information found in Drupal or Banner	
+		  $mesg .= '<div class="new-student-check-error"><strong>ERROR!</strong> The system is unable to locate an account that matches the information you have provided.  Please visit the <a href="trouble-logging-in">Trouble Logging In?</a> page to submit a support request.  One of our technicians will follow up with you shortly.</div>';
+		  break; 
+      	   }
+	   return array("#markup" => "<div id='results-area'><br>".$mesg."</div>");	   
+   } 
+}
+	
+
+function portal_new_student_form_process($form, &$form_state) {
+  //Check for Active Drupal Portal Account
+  $checkResults = portal_drupal_check($form_state['values']['bannerid'],$form_state['values']['lastname']);
+  //Process Results of Drupal Portal Check
+  if($checkResults == 300) {
+    //CODE 300 - Account not found in Drupal
+    //Persue Banner Account Check
+    $checkResults = portal_banner_check($form_state['values']['bannerid'],$form_state['values']['lastname']);
+   }
+   return $checkResults;
+}
+
+function portal_drupal_check($bannerid,$lname) {
+	//drupal_set_message(t('Checking Drupal Portal'));
+   // Check Result Options: 100 = Account Verified & Active in Drupal; 200 = Account Found in Drupal, Last Name Not a Match; 300 = Account not found in Drupal 
+   $checkResults = 300;
+   //Find Drupal User Account by Banner ID
+   //Retrieve System Settings: Drupal Banner ID field name
+   $dr_bannerID_fld = variable_get('cgce_um_drupal_bannerid_field');
+   //Develop SQL Query based on custom Banner ID field
+   $sql_bannerid = 'SELECT entity_id,field_' . $dr_bannerID_fld .'_value FROM field_data_field_'. $dr_bannerID_fld .' WHERE field_'. $dr_bannerID_fld .'_value = :bannerid';
+   //Execute Query
+   $result_bannerid = db_query($sql_bannerid, array(':bannerid' => $bannerid));
+   if($result_bannerid -> rowCount() > 0) {
+	//Matches Found, Confirm with Last Name  
+	foreach ($result_bannerid as $record_bannerid){
+		//Look up Last Name on exisitng account
+		//Retrieve System Settings: Drupal User Last Name field name
+		$dr_lname_fld = variable_get('cgce_um_drupal_lname_field');
+		//Develope SQL Query based on custom Last Name field
+		$sql_lname = 'SELECT field_' . $dr_lname_fld .'_value AS lname FROM field_data_field_'. $dr_lname_fld .' WHERE entity_id = :foundEntId';
+		//Execute Query
+		$result_lname = db_query($sql_lname, array(':foundEntId' => $record_bannerid->entity_id));
+		if($result_lname -> rowCount() > 0) {
+			//Retrieve Last Name and Confirm Match
+			foreach ($result_lname as $record_lname){
+				//Compare submitted LName to LName on File
+				if(strcmp(strtolower(trim($lname)),strtolower($record_lname->lname)) == 0) {
+					//User is in the system -> Suggest activating account
+					$checkResults = 100;
+				} else {
+					//Ask user to try again.  Cannot continue.
+					$checkResults = 200;
+				}
+			}
+		} else {
+			//Error in Account Setup -> Suggest contacting support
+			$checkResults = 250;
+		}
+	}
+   } else {
+	//User is not in the system -> Check Banner: Code 300
+   }
+  return $checkResults;
+}
+
+function portal_banner_check($bannerid,$lname) {
+   //drupal_set_message(t('Checking Banner'));
+  //Initialize Status of this Check to 0 (no result)
+  $checkStatus = 0;
+  $conn = cgce_user_manage_OCIdbConnect();
+  //Determine Current Term
+  $termcode = cgce_user_manage_getCurrent_term($conn);
+  //Determine Next Term
+  $nextTermcode = $termcode + 10;
+  //Generate ORACLE SQL statement to check for existance of student Record for Current or Next Term
+  //STEP 1 - does the record exist in Banner for CURRENT OR NEXT TERM
+  $sql = "select count(ID) from ROWAN.CGCEView_student WHERE id='$bannerid' AND (term_code = '$termcode' OR term_code = '$nextTermcode')";
+  $result = oci_parse($conn, $sql);
+  //Exceute statement & retrieve result
+  oci_execute($result);
+  $row = oci_fetch_array($result, OCI_NUM+OCI_RETURN_NULLS);
+  oci_free_statement($result);  
+  
+  //Was a result found?
+  if($row[0] <= 0) {
+	  //NO - STATUS 350 - User Not Found for CURRENT or NEXT term
+	   //drupal_set_message(t('No Record of this User in Banner for ' .$termcode. ' OR ' .$nextTermcode));
+	  $checkStatus = 350;
+  } else {
+	//YES - Account was found on record
+	 //drupal_set_message(t($row[0] . ' records of this user were found in Banner'));
+	//STEP 2 - Check that records are accurate against inputted information
+	//Generate ORACLE SQL statement to retrieve student record for Current or Next Term
+	$sql = "select term_code,ID,last_name,username from ROWAN.CGCEView_student WHERE id='$bannerid' AND (term_code = '$termcode' OR term_code = '$nextTermcode') ORDER BY term_code DESC";
+	$result = oci_parse($conn, $sql);
+    //Exceute statement & retrieve result
+    oci_execute($result);
+   
+    while($row = oci_fetch_array($result, OCI_BOTH+OCI_RETURN_NULLS)) {
+	  //STEP 2A - Check that associated Last Name & inputted Last Name Match
+	  if(strcasecmp($lname,$row['LAST_NAME']) == 0) {
+		    //YES - Last Name matches
+			//drupal_set_message(t('Users inputted last name is a match'));
+			break;
+	  } else  {
+		    //NO - STATUS 375 - Last Name does NOT Match
+			//drupal_set_message(t('Users inputted last name is NOT a match'));
+		    $checkStatus = 375;
+			break;
+	  }
+    }
+    oci_free_statement($result);  
+	
+	//If CheckStatus = 0 (no status), continue checking account status
+	if($checkStatus == 0) {
+	  //STEP 3 - is Student enrolled in CGCE Courses for Current or Next Term?
+	  //Init array to track term enrollments
+	  $enr_terms = array();
+	  //Generate ORACLE SQL statement to retrieve Number of ENROLLMENTS for student
+	  //for Current TERM in CGCE courses (courses with letter after section)
+	  $sql = "WITH crn_list AS 
+	  (SELECT distinct crn FROM ROWAN.CGCEView_Courses 
+	  WHERE term_code = '$termcode' 
+	  AND (SECT LIKE '%C'OR SECT LIKE '%F' OR SECT LIKE '%A' OR SECT LIKE '%S'))
+	  SELECT COUNT(ID) FROM ROWAN.CGCEView_Enrollments e, crn_list c
+	  WHERE e.crn = c.crn AND term_code = '$termcode' AND ID = '$bannerid'";
+	  $result = oci_parse($conn, $sql);
+	  //Exceute statement & retrieve result
+	  oci_execute($result);
+	  $row = oci_fetch_array($result, OCI_NUM+OCI_RETURN_NULLS);
+	  oci_free_statement($result); 
+	
+	   //Was a result found?
+	   if($row[0] <= 0) {
+		  //drupal_set_message(t('Student has no CGCE enrollment record for' .$termcode));
+		  $enr_terms[$termcode] = 0;
+		  //Generate ORACLE SQL statement to retrieve Number of ENROLLMENTS for student
+		  //for Current TERM in CGCE courses (courses with letter after section)
+		  $sql = "WITH crn_list AS 
+		  (SELECT distinct crn FROM ROWAN.CGCEView_Courses 
+		  WHERE term_code = '$nextTermcode' 
+		  AND (SECT LIKE '%C'OR SECT LIKE '%F' OR SECT LIKE '%A' OR SECT LIKE '%S'))
+		  SELECT COUNT(ID) FROM ROWAN.CGCEView_Enrollments e, crn_list c
+		  WHERE e.crn = c.crn AND term_code = '$nextTermcode' AND ID = '$bannerid'";
+		  $result = oci_parse($conn, $sql);
+		  //Exceute statement & retrieve result
+		  oci_execute($result);
+		  $row = oci_fetch_array($result, OCI_NUM+OCI_RETURN_NULLS);
+		  oci_free_statement($result); 
+		  if($row[0] <= 0) {
+			  //drupal_set_message(t('Student has no CGCE enrollment record for' .$nextTermcode));
+			  $enr_terms[$nextTermcode] = 0;
+		  } else {
+			  //drupal_set_message(t('Student CGCE enrollment record FOUND for' .$nextTermcode));
+			  $enr_terms[$nextTermcode] = 1;
+		  }
+	   } else {
+		  //drupal_set_message(t('Student CGCE enrollment record FOUND for' .$termcode));		
+		  $enr_terms[$termcode] = 1;
+	   }
+	   
+	   //Determine CGCE enrollment results
+	   if($enr_terms[$termcode] == 0 && $enr_terms[$nextTermcode] == 0) {
+		   //NO - STATUS 380 - No CGCE Enrollment Record for Current or Next Term
+		   //drupal_set_message(t('No CGCE Enrollment for ' .$termcode. ' OR ' .$nextTermcode));
+		   $checkStatus = 380;
+	   }
+	   if($enr_terms[$termcode] == 0 && $enr_terms[$nextTermcode] == 1) {
+		   //NO - STATUS 385 - CGCE Enrollment Record for Next Term ONLY
+		   //drupal_set_message(t('CGCE Enrollment for ' .$nextTermcode. ' ONLY'));
+		   $checkStatus = 385;
+	   }
+	   
+	}  //End STEP 3
+
+	//If CheckStatus STILL = 0 (no status), continue checking account status
+	if($checkStatus == 0) {
+		//STEP 4 - Check that student username exists
+		$sql = "select term_code,ID,last_name,username from ROWAN.CGCEView_student WHERE id='$bannerid' AND term_code = '$termcode'";
+		$result = oci_parse($conn, $sql);
+    	//Exceute statement & retrieve result
+    	oci_execute($result);
+   
+    	$row = oci_fetch_array($result, OCI_BOTH+OCI_RETURN_NULLS);
+		oci_free_statement($result); 
+   	    if(!is_null($row['USERNAME'])) {
+			//YES - Username on record
+			//drupal_set_message(t('The username is on record for this user'));
+		} else {
+			// NO - Username is not on record
+			//drupal_set_message(t('There is no username on record for this user'));
+			$checkStatus = 390; 
+		} 
+    } //End STEP 4
+		
+    //Close DB Connection
+	oci_close($conn);
+	
+	//If checkStatus is not set, then we tried our best and failed.  Send this to a technician for review
+	if($checkStatus == 0) {
+		$checkStatus = 400;
+	}
+	
+  } //End STEP 1 Check
+  return $checkStatus;
+
+  }
+
+/**
+ * Implements hook_user_insert(&$edit, $account)
+ * If enabled, this function will insert the user'sDrupal username into the CAS users table
+ */
+function cgce_user_manage_user_insert(&$edit, $account) {
+  //Check if CAS User insert is enabled  
+  if(variable_get('cgce_um_casuser') == 1) {
+     //insert CAS Username into cas_user table, mirrors Drupal Username
+     db_insert('cas_user')
+       ->fields(array(
+          'uid' => $account->uid,
+          'cas_name'=> $account->name,
+     ))
+     ->execute();
+  }
+}
+
+function cgce_user_manage_OCIdbConnect() {
+  //Retrieve System Settings: Banner ORACLE HOST & SID
+  $db = variable_get('cgce_um_bannerdb');
+  $dbInst = variable_get('cgce_um_bannerinst');
+  //Develop ORACLE connection Statement 
+  $dbConn = '(DESCRIPTION=(ADDRESS_LIST = (ADDRESS = (PROTOCOL = TCP)(HOST = '. $db .')(PORT = 1521)))(CONNECT_DATA=(SID='. $dbInst .')))'; 
+  //Retrieve System Settings: Banner ORACLE User & Password
+  $orclUsr = variable_get('cgce_um_bannerusr');
+  $orclPass = variable_get('cgce_um_bannerpass');
+   //Attempt ORACLE Connection
+  if(!$conn =  oci_connect($orclUsr, $orclPass, $dbConn)) {
+	//Connection Failed, Recover Error Message  
+	$m = oci_error();
+	//drupal_set_message(t($m));
+  }
+  return $conn;
+}
+
+
+function cgce_user_manage_getCurrent_term($conn) {
+  //Develop ORACLE SQL statement to look up Student Record
+  $sql = "SELECT STVTERM_CODE FROM STVTERM WHERE SYSDATE >= stvterm_start_date AND SYSDATE <= stvterm_end_date";
+  $result = oci_parse($conn, $sql);
+  //Exceute statement & retrieve result
+  oci_execute($result);
+  
+   while($row = oci_fetch_array($result, OCI_BOTH+OCI_RETURN_NULLS)) {
+	 $termcode = $row['STVTERM_CODE'];
+  }
+  oci_free_statement($result);  
+
+  return $termcode;
+}
